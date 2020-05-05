@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>d3.js learning</title>
+  <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <style type="text/css">
+
+       @font-face {
+     font-family: 'Proto Grotesk';
+     src: local('☺️'),
+      url('https://static.istories.media/public/fonts/Proto Grotesk-Regular-Web.woff2') format('woff2'),
+      url('https://static.istories.media/public/fonts/Proto Grotesk-Regular-Web.woff') format('woff'),
+      url('https://static.istories.media/public/fonts/Proto Grotesk-Regular-Web.ttf') format('truetype');
+     font-weight: normal;
+     font-style: normal;
+     font-display: swap;
+    }
+    @font-face {
+     font-family: 'Proto Grotesk';
+     src: local('☺️'),
+      url('https://static.istories.media/public/fonts/Proto Grotesk-Bold-Web.woff2') format('woff2'),
+      url('https://static.istories.media/public/fonts/Proto Grotesk-Bold-Web.woff') format('woff'),
+      url('https://static.istories.media/public/fonts/Proto Grotesk-Bold-Web.ttf') format('truetype');
+     font-weight: bold;
+     font-style: normal;
+     font-display: swap;
+    }
+
+    g {
+    font: normal 15px "Proto Grotesk";
+    }
+      svg {
+    font: 10px sans-serif;
+    shape-rendering: crispEdges;
+  }
+
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+  }
+
+  path.domain {
+    stroke: none;
+  }
+
+  .y .tick line {
+    stroke: #ddd;
+  }
+
+
+  </style>
+
+</head>
+<body>
+<script type="text/javascript">
+
+
+var margin = {top: 20, right: 160, bottom: 35, left: 50};
+
+var width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var widthValue = width + margin.left + margin.right;
+var heightValue = height + margin.top + margin.bottom;
+
+var svg = d3.select("body")
+  .append("svg")
+    .attr("viewBox", `0 0 ${widthValue} ${heightValue}`)
+  .append("g")
+  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+var data = [
+  { st: "Убийство", yes: "43", no: "57" },
+  { st: "Тяжкий вред", yes: "36" , no: "64"},
+  { st: "Истязания", yes: "33", no: "67"},
+    { st: "Средний вред", yes: "11", no: "89" }
+
+];
+
+var dataset = d3.layout.stack()(["yes", "no"].map(function(detail) {
+  return data.map(function(d) {
+    return {x: d.st, y: +d[detail]};
+  });
+}));
+
+
+// Set x, y and colors
+var x = d3.scale.ordinal()
+  .domain(dataset[0].map(function(d) { return d.x; }))
+  .rangeRoundBands([10, width-10], 0.02);
+
+var y = d3.scale.linear()
+  .domain([0, d3.max(dataset, function(d) {  return d3.max(d, function(d) { return d.y0 + d.y; });  })])
+  .range([height, 0]);
+
+var colors = ["#99372e", "#8d97aa"];
+
+
+// Define and draw axes
+var yAxis = d3.svg.axis()
+  .scale(y)
+  .orient("left")
+  .ticks(3)
+  .tickSize(-width, 0, 0)
+  .tickFormat( function(d) { return d+"%" } );
+
+var xAxis = d3.svg.axis()
+  .scale(x)
+  .orient("bottom");
+
+svg.append("g")
+  .attr("class", "y axis")
+  .call(yAxis);
+
+svg.append("g")
+  .attr("class", "x axis")
+  .attr("transform", "translate(0," + height + ")")
+  .call(xAxis);
+
+
+var groups = svg.selectAll("g.cost")
+  .data(dataset)
+  .enter().append("g")
+  .attr("class", "cost")
+  .style("fill", function(d, i) { return colors[i]; })
+
+
+var rect = groups.selectAll("rect")
+  .data(function(d) { return d; })
+  .enter()
+  .append("rect")
+  .attr("x", function(d) { return x(d.x)+33; })
+  .attr("y", function(d) { return y(d.y0 + d.y); })
+  .attr("height", function(d) { return y(d.y0) - y(d.y0 + d.y); })
+  .attr("width", x.rangeBand()-70)
+
+  .on("mouseover", function() { tooltip.style("display", null); })
+  .on("mouseout", function() { tooltip.style("display", "none"); d3.select(this).style('opacity', 1)})
+  .on("mousemove", function(d) {
+      d3.select(this).style('opacity', 0.8);
+    var xPosition = d3.mouse(this)[0] - 15;
+    var yPosition = d3.mouse(this)[1] - 25;
+    tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
+    tooltip.select("text").text(d.y+'%');
+  });
+
+
+// Draw legend
+var legend = svg.selectAll(".legend")
+  .data(colors)
+  .enter().append("g")
+  .attr("class", "legend")
+  .attr("transform", function(d, i) { return "translate(30," + i * 23 + ")"; });
+
+legend.append("rect")
+  .attr("x", width - 18)
+
+  .attr("width", 18)
+  .attr("height", 18)
+  .style("fill", function(d, i) {return colors.slice().reverse()[i];});
+
+legend.append("text")
+  .attr("x", width + 5)
+  .attr("y", 9)
+  .attr("dy", ".30em")
+  .style("text-anchor", "start")
+    .style("font" ,"13px Proto Grotesk")
+  .text(function(d, i) {
+    switch (i) {
+      case 0: return "без судимости";
+      case 1: return "ранее судимы";
+    }
+  });
+
+
+// Prep the tooltip bits, initial display is hidden
+var tooltip = svg.append("g")
+  .attr("class", "tooltip")
+  .style("display", "none");
+
+tooltip.append("rect")
+  .attr("width", 30)
+  .attr("height", 20)
+  .attr("fill", "white")
+    .style("stroke-width", 1)
+    .style("stroke", "black");
+
+tooltip.append("text")
+  .attr("x", 15)
+  .attr("dy", "1.2em")
+  .style("text-anchor", "middle")
+  .attr("font-size", "12px")
+  .attr("font-weight", "normal");
+
+</script>
+</body>
+</html>
